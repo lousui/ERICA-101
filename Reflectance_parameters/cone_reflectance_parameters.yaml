@@ -13,7 +13,7 @@ static_jitter_std: 0.01
 max_amp_nm: 4.0
 
 # disc shredding params
-renewal: True
+renewal: False
 start_time: '8:00'
 interval_h: 6
 seed: 23
@@ -27,4 +27,4 @@ static_trials: 1
 trials_per_condition: 5
 em_free: True
 noise_free: False
-pre_stim_nframes: 0
+pre_stim_nframes: 30
