@@ -1,0 +1,75 @@
+reflectance_parameters:
+  normal_mean: 0.5
+  normal_std: 0.15
+  width_variation: 0.1
+  distribution: interference
+  osl_min_um: 15.0
+  osl_max_um: 35.0
+  coherency: false
+  exp_type: flicker
+  duration_s: 1.5
+  frequency_Hz: 3.0
+  static_jitter_std: 0.01
+  max_amp_nm: 4.0
+  em_free: false
+  L_iso_contrast:
+  - 0.22
+  - 0
+  - 0
+  M_iso_contrast:
+  - 0
+  - 0.26
+  - 0
+  S_iso_contrast:
+  - 0
+  - 0
+  - 0.89
+  Achr_contrast:
+  - 1
+  - 1
+  - 1
+  static_trials: 5
+  trials_per_condition: 10
+system_parameters:
+  bit_depth: 8
+  frequency_fast_scanner_Hz: 13968.8
+  microns_per_degree: 274.75052334610257
+  noise_mode: gaussian
+  noise_mean_normalised_graylevels: 0.4
+  noise_stdev_normalised_graylevels: 0.15
+  number_pixels_per_line: 358
+  number_scan_lines_excluding_flyback: 456
+  number_scan_lines_including_flyback: 464
+  pinhole_diameter_Airy_radii: 1.65
+  pixel_size_arcmin_y_x:
+  - 0.2
+  - 0.2
+  proportion_saturated_pixels: 0.005
+  pupil_diameter_m: 0.006
+  wavelength_m: 8.3e-07
+  spectral_bandwidth_nm: 0.5
+  eccentricity_y_x:
+  - 4
+  - 0
+  montage_field_of_view_y_x:
+  - 2
+  - 2
+  mosaic_number: 0
+  mosaic_folder: /mnt/d/Sirui/AOSLO_ORG/Code/simulation/isetbio_retina/
+eye_motion_parameters:
+  Drift_amplitude_arcmin_MEAN: 6.5
+  Drift_amplitude_arcmin_STD: 0.7
+  Main_sequence_STD: 1.0
+  Main_sequence_factor: 100.0
+  Microsaccade_amplitude_arcmin_MEAN: 30.0
+  Microsaccade_amplitude_arcmin_STD: 3.0
+  Microsaccade_interval_seconds_MEAN: 1.0
+  Microsaccade_interval_seconds_STD: 0.5
+  Minimum_microsaccade_interval: 0.1
+  Minimum_time_microsaccade: 0.1
+  Tremor_amplitude_arcmin_MEAN: 0.08
+  Tremor_amplitude_arcmin_STD: 0.03
+  Tremor_bandwidth_MEAN: 25
+  Tremor_bandwidth_STD: 2.5
+  Tremor_centre_frequency_MEAN: 65
+  Tremor_centre_frequency_STD: 7.5

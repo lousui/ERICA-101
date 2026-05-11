@@ -114,7 +114,7 @@ def findUniformPeaks(image):
     # Detect peaks in the binarised image, specifying the minimum distance 
     # Between peaks as half the estimated peak spacing.
     minimum_separation = int(numpy.floor(estimated_spacing * 0.5))
-    max_filter_output = peak_local_max(image, indices=False, min_distance=minimum_separation)
+    max_filter_output = peak_local_max(image, min_distance=minimum_separation, indices=False)
     
     # Label the regions around each of the peaks
     markers = ndimage.label(max_filter_output)[0]

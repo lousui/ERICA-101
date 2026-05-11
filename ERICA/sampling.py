@@ -125,7 +125,12 @@ def sampleRetina(retina_params_microns, eye_motion_arcmin, fast_scan_pixels, slo
         fixation eccentricity and imaging eccentricity
         
     '''
+
+    if retina_params_microns.shape[0] != 6:
+        raise ValueError(f'Expected "retina_params_microns" of size (6, n_cones), got {retina_params_microns.shape}')
     
+    if eye_motion_arcmin.shape[0] != 2 or eye_motion_arcmin.shape[1] != slow_scan_pixels.shape[0]:
+        raise ValueError(f'Expected "eye_motion_arcmin" of size (2,{slow_scan_pixels.shape[0]}), got {eye_motion_arcmin.shape}')
     
     # Convert retinal parameter array from microns to pixels (first 5 elements, 5 is rotation angle and 6 is reflectance)
     retina_params_pixels = numpy.copy(retina_params_microns)
@@ -208,7 +213,7 @@ def sampleRetina(retina_params_microns, eye_motion_arcmin, fast_scan_pixels, slo
     retina_params_pixels_scanned[1] -= fast_indices[0]
 
     # Return the intensity data and the ground truth data for this image
-    return intensity, retina_params_pixels_scanned, fast_indices, slow_indices
+    return intensity, retina_params_pixels_scanned, fast_indices, slow_indices, cones_scanned
 
 def quickLookImage(retina_params_microns, eccentricity, field_of_view, microns_per_degree, pixel_size_arcmin, upsample_factor=1):
     
@@ -261,9 +266,9 @@ def quickLookImage(retina_params_microns, eccentricity, field_of_view, microns_p
     eye_motion_arcmin = numpy.zeros((2, fast_scan_pixels.shape[0]))
     
     # Scan the retina
-    intensity, ground_truth_array, fast_scan, slow_scan = sampleRetina(retina_params_microns, eye_motion_arcmin, fast_scan_pixels, slow_scan_pixels, pixel_size_arcmin, microns_per_degree, eccentricity)
+    intensity, ground_truth_array, fast_scan, slow_scan, cones_scanned = sampleRetina(retina_params_microns, eye_motion_arcmin, fast_scan_pixels, slow_scan_pixels, pixel_size_arcmin, microns_per_degree, eccentricity)
     
     # Reshape the intensity stream into an image
     image = intensity.reshape(y.shape)
     
-    return image, ground_truth_array
+    return image, ground_truth_array, cones_scanned

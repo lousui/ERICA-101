@@ -6,6 +6,7 @@ Useful functions called within other modules or within exampe Juypter notebooks.
 
 import numpy
 import scipy
+import scipy.signal
 
 from  matplotlib import pyplot
 from  matplotlib import collections
@@ -95,7 +96,7 @@ def functCurcio(x, p):
     '''  
       
     # The output could be complex so change the data type to match
-    x2 = numpy.array(x, dtype=numpy.complex)
+    x2 = numpy.array(x, dtype=complex)
 
     result = p[0] * (x2 + p[1]) ** p[2] + p[3]
     

@@ -57,7 +57,7 @@ def createPinhole(psf_size, pinhole_add, oversampling, ph_scale_up = 10.):
     pinhole_scale_up = numpy.where(r <= pinhole_radius_pixels, 1., 0.)
     
     # Downsample it using an antialising filter to match the size of the PSF array
-    pinhole_downsampled = numpy.asarray(Image.fromarray(pinhole_scale_up).resize(psf_size, Image.ANTIALIAS))
+    pinhole_downsampled = numpy.asarray(Image.fromarray(pinhole_scale_up).resize(psf_size, Image.Resampling.LANCZOS))
     
     # Clip the values so that they remain in the range 0->1
     pinhole = numpy.clip(pinhole_downsampled, 0., 1.)

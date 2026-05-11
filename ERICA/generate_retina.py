@@ -23,14 +23,23 @@ from ERICA import ERICA_toolkit, peak_detection
 # From Watson (2014): "We order the meridians temporal, superior, nasal, inferior, consistent with increasing polar angle in the visual field of the right eye, and assign them indexes of 1 to 4"
 CONE_DENSITY_RAW = numpy.loadtxt(os.path.abspath(os.path.normpath(os.path.join('Data', 'Curcio_1990_Watson.csv'))), delimiter=',')
 
-# Refractive indices taken from Meadway A and Sincich LC (2019), "Light reflectivity and interference in cone photoreceptors", Biomed. Opt. Express. 10(12):6531-6554
-# Original data in A. W. Snyder and C. Pask (1973), "The  Stiles-Crawford effect-explanation and consequences", Vis. Res. Vol. 13, 1115-1137.
+# # Refractive indices taken from Meadway A and Sincich LC (2019), "Light reflectivity and interference in cone photoreceptors", Biomed. Opt. Express. 10(12):6531-6554
+# # Original data in A. W. Snyder and C. Pask (1973), "The  Stiles-Crawford effect-explanation and consequences", Vis. Res. Vol. 13, 1115-1137.
+# # Refractive index of inner segment
+# NI = 1.378
+# # Refractive index of outer segment
+# NO = 1.39
+# # Refractive index of surrounding medium
+# NS = 1.34
+
+# SL Dec 2025
+# Refractive indices taken from the ideal average cone model given by A. W. Snyder and C. Pask (1973), "The  Stiles-Crawford effect-explanation and consequences", Vis. Res. Vol. 13, 1115-1137.
 # Refractive index of inner segment
-NI = 1.378
+NI = 1.353
 # Refractive index of outer segment
-NO = 1.39
+NO = 1.430
 # Refractive index of surrounding medium
-NS = 1.34
+NS = 1.340
 
 def fitCurcioData():
     ''' Fits a power law curve to cone spacing data, derived from Curcio 1990. 
@@ -519,12 +528,12 @@ def generateRetinaFromEccentricity(points, eccentricity, field_of_view, microns_
     eccentricities = numpy.sqrt(cone_positions_window[0]**2 + cone_positions_window[1]**2) / microns_per_degree
     cone_sizes = coneDiameter(eccentricities, microns_per_degree, wavelength)
     cone_sizes_2d = numpy.repeat(cone_sizes[numpy.newaxis,:], 2, axis=0)
-    retina_params_microns = retina(cone_positions_window , cone_sizes_2d, reflectance_map=reflectance_map, width_variation=width_variation, mean_reflectance=mean_reflectance, std_reflectance=std_reflectance, skew_location=skew_location, skew_scale=skew_scale, skew_alpha=skew_alpha, skew_amplitude=skew_amplitude, skew_offset=skew_offset, distribution=distribution)
+    retina_params_microns = retina(cone_positions_window, cone_sizes_2d, reflectance_map=reflectance_map, width_variation=width_variation, mean_reflectance=mean_reflectance, std_reflectance=std_reflectance, skew_location=skew_location, skew_scale=skew_scale, skew_alpha=skew_alpha, skew_amplitude=skew_amplitude, skew_offset=skew_offset, distribution=distribution)
     
     return retina_params_microns
 
 
-def retina(cone_locations_um, cone_sizes_um, reflectance_map=None, width_variation=0.0, mean_reflectance=None, std_reflectance=None, skew_location=None, skew_scale=None, skew_alpha=None, skew_amplitude=None, skew_offset=None, distribution='normal'):
+def retina(cone_locations_um, cone_sizes_um, outer_segment_length_um=None, reflectance_map=None, width_variation=0.0, mean_reflectance=None, std_reflectance=None, skew_location=None, skew_scale=None, skew_alpha=None, skew_amplitude=None, skew_offset=None, distribution='normal', wavelength_nm=830):
     '''Creates an array of [cone y pos, cone x pos, cone x width (stdev), 
     cone y width (stdev), rotation angle (radians), reflectance] given the 
     variabilities specified.
@@ -537,6 +546,11 @@ def retina(cone_locations_um, cone_sizes_um, reflectance_map=None, width_variati
         eccentricity.
     cone_sizes_um : array_like
         The sizes of the cones, calculated based on their eccentricity.
+    outer_segment_length_um : array_like (optinal)
+        The outer segment lengths of cones in micrometer for calculating reflectance 
+        from two beam interference. Can be:
+        - An array with length equal to the number of cones
+        - None (defaults to normal distribution centred at 25um, with std=(35-15)/3)
     reflectance_map : array_like (optional)
         A 2D amplitude map specifying the cone reflectance as a function of position on
         the retina. The default is to select cone reflectances from a normal
@@ -555,6 +569,13 @@ def retina(cone_locations_um, cone_sizes_um, reflectance_map=None, width_variati
     std_reflectance : float (optional)
         Cone reflectances are selected from a normal distribution, this 
         specifies the standard deviation of that distribution. 
+    distribution : string
+        Distribution of cone reflectance, can be:
+        - normal : normal distribution 
+        - skew : skew normal distribution
+        - interference : calculate reflectance from two beam interference,
+        need to specify imaging wavelength (could be read from the config,
+        default to 830nm)
         
         
     Returns
@@ -576,6 +597,7 @@ def retina(cone_locations_um, cone_sizes_um, reflectance_map=None, width_variati
 
     # Cone reflectances are specified by the amp_map if given and if not, each 
     # cone has a reflectance selected from a normal distribution.
+    # Or computed by two beam interference with the given outer segment lengths
     if type(reflectance_map) == type(None):
         if distribution == 'normal':
             if type(mean_reflectance) == type(None) or type(std_reflectance) == type(None):
@@ -589,7 +611,23 @@ def retina(cone_locations_um, cone_sizes_um, reflectance_map=None, width_variati
             else:
                 
                 reflectance = selectSkew(cone_sizes_um.shape[1], [skew_location, skew_scale, skew_alpha, skew_amplitude, skew_offset])
-        
+        elif distribution == 'interference':
+            # if outer segment length not given, sample OSLs from normal distribution
+            if outer_segment_length_um is None:
+                outer_segment_length_um = 25.0
+                outer_segment_length_std = (35.0-15.0)/6  # 3-sigma rule
+
+            if numpy.isscalar(outer_segment_length_um):
+                osl = numpy.random.normal(outer_segment_length_um, outer_segment_length_std, size=(cone_sizes_um.shape[1]))
+            else:
+                osl = numpy.asarray(outer_segment_length_um)
+                if len(osl) != cone_sizes_um.shape[1]:
+                    raise ValueError(f"outer_segment_length_um array ({len(osl)}) must match number of cones ({cone_sizes_um.shape[1]})")            
+
+            opd_nm = 2 * NO * osl * 1000    # OPD = 2 * n * l
+            d_phi = 2 * numpy.pi * opd_nm / wavelength_nm   # phase shift = 2pi * OPD / lambda
+            reflectance = 0.5 * (1 + numpy.cos(d_phi))      # two beam interference, assuming I1=I2=0.5
+
 
     else:
         # Create a copy of the cone locations and shift them so that they begin at [0,0] and are only positive in value
@@ -602,8 +640,7 @@ def retina(cone_locations_um, cone_sizes_um, reflectance_map=None, width_variati
         positive_locations[1] = numpy.clip(positive_locations[1],0,reflectance_map.shape[1]-1)
     
         # Select the average value from the amplitude map in a window around the cone's location.
-        reflectance = numpy.asarray([numpy.mean(reflectance_map[numpy.clip(int(round(positive_locations[0,i]-int(cone_sizes_um[0,i]*3))), 0, reflectance_map.shape[0]):numpy.clip(int(round(positive_locations[0,i]+int(cone_sizes_um[0,i]*3))), 0, reflectance_map.shape[0]),
-    numpy.clip(int(round(positive_locations[1,i]-int(cone_sizes_um[1,i]*3))), 0, reflectance_map.shape[1]):numpy.clip(int(round(positive_locations[1,i]+int(cone_sizes_um[1,i]*3))), 0, reflectance_map.shape[1])]) for i in range(positive_locations.shape[1])])
+        reflectance = numpy.asarray([numpy.mean(reflectance_map[numpy.clip(int(round(positive_locations[0,i]-int(cone_sizes_um[0,i]*3))), 0, reflectance_map.shape[0]):numpy.clip(int(round(positive_locations[0,i]+int(cone_sizes_um[0,i]*3))), 0, reflectance_map.shape[0]), numpy.clip(int(round(positive_locations[1,i]-int(cone_sizes_um[1,i]*3))), 0, reflectance_map.shape[1]):numpy.clip(int(round(positive_locations[1,i]+int(cone_sizes_um[1,i]*3))), 0, reflectance_map.shape[1])]) for i in range(positive_locations.shape[1])])
 
     # Create the parameter array
     params = numpy.zeros((6,cone_locations_um.shape[1]))

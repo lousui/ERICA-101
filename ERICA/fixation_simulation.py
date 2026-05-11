@@ -99,8 +99,7 @@ class Fixation:
         # The total number of samples is the total time divide by the time 
         # resolution, rounded up to the nearest integer.
         n_samples = int(numpy.ceil(total_time_s / self.sample_time))
-        
-        n_samples /= self.subsamp
+        n_samples_downsampled = n_samples / self.subsamp
         time_resolution = self.sample_time * self.subsamp
         
         # Generate some microsaccade intervals
@@ -133,9 +132,8 @@ class Fixation:
             # Generate fixational eye motion (tremor + drift) for the 
             # inter-microsaccadic interval and save the parameters of the movement
             fem, param_fem = self.eyeMotion_TremorDrift(time_resolution, number_samples_between_microsaccades)
-            if sample_counter < n_samples:
+            if sample_counter < n_samples_downsampled:
                 fix_param.append(param_fem)
-            
             # Add the fixational eye motion to the motion trace, lining it up with
             # the last position. N.b. fem[:,1] corresponds to horizontal motion
             # and fem[:,0] to vertical motion
@@ -188,19 +186,19 @@ class Fixation:
             
             # save the indices of the start and end of the microsaccade
             sample_counter += len(motion_horizontal[-1])
-            if ms_start < n_samples and sample_counter < n_samples:
+            if ms_start < n_samples_downsampled and sample_counter < n_samples_downsampled:
                 microsaccade_marker.append([ms_start, sample_counter])
                 ms_param.append(param_m)
-            elif ms_start < n_samples and sample_counter >= n_samples:
+            elif ms_start < n_samples_downsampled and sample_counter >= n_samples_downsampled:
                 microsaccade_marker.append([ms_start, numpy.nan])
                 ms_param.append(param_m)
     
-        mx = numpy.concatenate(motion_horizontal)[:int(n_samples)]
-        my = numpy.concatenate(motion_vertical)[:int(n_samples)]
+        mx = numpy.concatenate(motion_horizontal)[:int(n_samples_downsampled)]
+        my = numpy.concatenate(motion_vertical)[:int(n_samples_downsampled)]
         microsaccade_marker = numpy.asarray(microsaccade_marker)
         ms_param = numpy.asarray(ms_param)
         fix_param = numpy.asarray(fix_param)
-        
+
         # Upsample the data back to the original time_resolution and return the 
         # data and parameters
         mx = numpy.repeat(mx,self.subsamp)
@@ -212,7 +210,7 @@ class Fixation:
         
         # Generate the time samples
         time_samples = numpy.linspace(0, mx.shape[0]-1, mx.shape[0]) * self.sample_time
-        
+
         return mx, my, time_samples, fix_param, ms_param, microsaccade_marker.astype(int)
     
     def realistic_ms_intervals(self, total_time_s):
