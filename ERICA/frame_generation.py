@@ -253,6 +253,8 @@ def diffractionOnly(image, pixel_size_arcmin, wavelength, pupil_diameter, pinhol
     elif psf_use.shape[1] >= image.shape[1]:
         psf_use = psf_use[:,int(numpy.floor(psf_use.shape[1] / 2.) - numpy.floor(image.shape[1] / 2.)):int(numpy.floor(psf_use.shape[1] / 2.) + numpy.ceil(image.shape[1] / 2.))]
 
+    psf_use /= psf_use.sum()
+
     # Perform convolution of image with confocal PSF
     image_diffraction = ERICA_toolkit.convolve2D(image, psf_use)
 
