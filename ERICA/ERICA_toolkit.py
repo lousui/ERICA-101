@@ -8,6 +8,7 @@ import numpy
 import scipy
 import scipy.signal
 
+import matplotlib
 from  matplotlib import pyplot
 from  matplotlib import collections
 from scipy.optimize import leastsq, fmin
@@ -425,4 +426,51 @@ def make_segments(x, y):
     segments = numpy.concatenate([points[:-1], points[1:]], axis=1)
     return segments
 
+def plotXandY(t, mx, my, ms_marker=[[numpy.nan, numpy.nan]], downsample_for_plotting=8000, cmap=pyplot.get_cmap('viridis')):
+    ''' Plots the horizontal (x) and vertical (y) data as separate lines'''
+    fig_1 = pyplot.figure(1, figsize=(12,4))
+    fig_1.clf()
+    ax1 = fig_1.add_subplot(111)
+    ax1.plot(t[::downsample_for_plotting], mx[::downsample_for_plotting], color='b', label='Horizontal motion')
+    ax1.plot(t[::downsample_for_plotting], my[::downsample_for_plotting], color='g', label='Vertical motion')
+
+    for i in range(len(ms_marker)):
+        for j in range(2):
+            if numpy.isnan(ms_marker[i][j]) == False:
+                idx = int(ms_marker[i][j]-(-1)**j)
+                if i==0 and j==0:
+                    
+                    ax1.axvline(t[idx], color='purple', label='Microsaccade', linestyle='--', alpha=0.5, linewidth=1)
+                else:
+                    ax1.axvline(t[idx], color='purple', linestyle='--', alpha=0.5, linewidth=1)
+
+    ax1.set_xlabel('Time (s)')
+    ax1.set_ylabel('Position (arcmin)')
+    ax1.legend(bbox_to_anchor=(1,1))
+    ax1.set_xlim(t.min(), t.max())
+    fig_1.subplots_adjust(top=0.96, left=0.07, right=0.84, bottom=0.12)
+    return fig_1
+        
+
+def plotXY(t, mx, my, downsample_for_plotting=8000, cmap=pyplot.get_cmap('viridis')):
+    '''Plots the motion trace in 2D space'''
+    fig_2 = pyplot.figure(2, figsize=(6,4))
+    fig_2.clf()
+    ax2 = fig_2.add_subplot(111)
+
+    line = colorline(mx[::downsample_for_plotting],my[::downsample_for_plotting], ax2,cmap=cmap, clp=255, linewidth=1)
+
+    cbaxes = fig_2.add_axes([1.0, 0.1, 0.03, 0.8]) 
+    norm = matplotlib.colors.Normalize(vmin=numpy.floor(t.min()), vmax=numpy.ceil(t.max()))
+    cb1 = matplotlib.colorbar.ColorbarBase(cbaxes, cmap=cmap, norm=norm, orientation='vertical')
+    cb1.set_label('Time (s)')
+
+    ax2.set_xlabel('Horizontal position (arcmin)')
+    ax2.set_ylabel('Vertical position (arcmin)')
+    ax2.set_xlim(numpy.floor(mx.min())-0.5,numpy.ceil(mx.max())+0.5)
+    ax2.set_ylim(numpy.floor(my.min())-0.5,numpy.ceil(my.max())+0.5)
+    fig_2.subplots_adjust(top=0.96, left=0.12, right=0.94, bottom=0.12)
+           
+    return fig_2
+        
 
