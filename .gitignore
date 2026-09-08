@@ -9,6 +9,7 @@ Reaction_diffusion_outputs/
 Retinal_mosaic_parameters_arrays/
 Example_images/
 Eye_motion/
+tutorial_notebook/
 *.svg
 *.npy
 *.mat

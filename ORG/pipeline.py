@@ -166,7 +166,12 @@ class retina:
                                             var=self.myAOSLO.parameters['noise_stdev_normalised_graylevels']**2)
         return image_noisy 
     
-    def add_noise2stream(self, image_stream, noise_mean=None, noise_stdev=None):
+    def add_noise2stream(self, 
+                         image_stream, 
+                         noise_mean=None, 
+                         noise_stdev=None,
+                         vals=None,
+                         ):
         '''
         Add Poisson noise and Gaussian white noise to data stream.
         '''
@@ -174,9 +179,12 @@ class retina:
             noise_mean = self.myAOSLO.parameters['noise_mean_normalised_graylevels']
         if noise_stdev is None:
             noise_stdev = self.myAOSLO.parameters['noise_stdev_normalised_graylevels']
+        if vals is None:
+            vals = self.myAOSLO.parameters['poisson_scale']
 
-        vals = len(np.unique(image_stream))
-        vals = 2 ** np.ceil(np.log2(vals))
+        # shot noise, adapted from skimage
+        # vals = len(np.unique(image_stream))
+        # vals = 2 ** np.ceil(np.log2(vals))
         noisy_stream = np.random.poisson(image_stream * vals) / float(vals)
         # noisy_stream = np.random.poisson(image_stream)    # shot noise
 
@@ -187,7 +195,17 @@ class retina:
         
         return noisy_stream
 
-    def make_aoslo_image(self, retina_params=None, eye_motion_arcmin=None, eccentricity=None, noise:bool=True, clip:bool=False, noise_mean=None, noise_stdev=None):
+    def make_aoslo_image(self, 
+                         retina_params=None, 
+                         eye_motion_arcmin=None, 
+                         eccentricity=None, 
+                         noise:bool=True, 
+                         clip:bool=False, 
+                         noise_mean=None, 
+                         noise_stdev=None,
+                         return_cones=None,
+                         return_intensity=None,
+                         ):
 
         '''
         Generate AOSLO images.
@@ -237,15 +255,15 @@ class retina:
         if eccentricity is None:
             eccentricity = self.eccentricity
         
-        intensity, *_ = sampling.sampleRetina(retina_params, eye_motion_arcmin, self.myAOSLO.fast, self.myAOSLO.slow, self.myAOSLO.parameters['pixel_size_arcmin_y_x'], self.myAOSLO.parameters['microns_per_degree'], eccentricity)
+        intensity, groundtruth_centroids, _, _, cones_scanned = sampling.sampleRetina(retina_params, eye_motion_arcmin, self.myAOSLO.fast, self.myAOSLO.slow, self.myAOSLO.parameters['pixel_size_arcmin_y_x'], self.myAOSLO.parameters['microns_per_degree'], eccentricity)
+
+        # add gaussian noise before desinusoid
+        if noise == True:
+            intensity = self.add_noise2stream(intensity, noise_mean, noise_stdev)
 
         fr_image = intensity.reshape((self.myAOSLO.parameters['number_scan_lines_including_flyback'],self.myAOSLO.parameters['number_pixels_per_line']*2))
 
         image = fr_image[:,:self.myAOSLO.parameters['number_pixels_per_line']]
-
-        # add gaussian noise before desinusoid
-        if noise == True:
-            image = self.add_noise2stream(image, noise_mean, noise_stdev)
 
         image_desinusoid = self.myAOSLO.desinusoid(image)
 
@@ -258,6 +276,18 @@ class retina:
         if clip == True:
             saturation_val = np.percentile(image_dffr, (1.0-self.myAOSLO.parameters['proportion_saturated_pixels'])*100)
             image_dffr = np.clip(image_dffr, 0.0, saturation_val)
+        
+        lo, hi = self.myAOSLO.parameters['mapping_low_high'] 
+        image_dffr = np.clip((image_dffr - lo) / (hi - lo), 0, 1)
+
+        if return_intensity is not None and return_cones is None:
+            return image_dffr, intensity
+        
+        if return_intensity is None and return_cones is not None:
+            return image_dffr, cones_scanned, groundtruth_centroids
+        
+        if return_intensity is not None and return_cones is not None:
+            return image_dffr, intensity, cones_scanned, groundtruth_centroids
 
         return image_dffr
     
@@ -283,11 +313,13 @@ class retina:
 
     
 
-    def drift_trace_one_frame(self):
+    def drift_trace(self, 
+                    microsaccade_amplitude=None, 
+                    total_time=None):
         '''
         Copied from villmaria/ISETBioImageGeneration/ERICAMethods/RandomAnglesDrift_ISETBioMosaic_ForwardBackward.py
 
-        Generates a drift motion trace for constructing a single aoslo frame. 
+        Generates a drift motion trace for constructing a single aoslo frame. If specified total_time, then for whole duration and will need to split time.
         
         Reads
         -----
@@ -304,12 +336,15 @@ class retina:
         microsaccade_angle = np.random.uniform(0, 360)
         microsaccade_angle *= (np.pi/180)
         # Pick a microsaccade amplitude in ArcMin 
-        microsaccade_amplitude = np.random.uniform(0, 30)
-        
+        if microsaccade_amplitude is None:
+            microsaccade_amplitude = np.random.uniform(0, 30)
         # microsaccade_amplitude = 0 
         # Make it a nice round number :-)
-        microsaccade_amplitude = round(microsaccade_amplitude, 0)
-        total_time = self.myAOSLO.time_resolution * self.myAOSLO.n_samples
+        microsaccade_amplitude = round(microsaccade_amplitude, 2)
+
+        if total_time is None:
+            total_time = self.myAOSLO.time_resolution * self.myAOSLO.n_samples
+
         # The number of samples in that time period
         n_samples_microsaccade = int(np.ceil(total_time / float(self.myAOSLO.time_resolution)))
         print(f'n samples: {n_samples_microsaccade}')
@@ -386,7 +421,7 @@ class retina:
 
         return microsaccade
     
-    def em_trace_full(self, total_time):
+    def em_trace_full(self, total_time, drift_only=False):
         '''
         Simulate and segmentate a motion trace with the given duration
         
@@ -394,11 +429,16 @@ class retina:
         :param total_time: Description
         '''
 
-        motion_x, motion_y, time_samples, *_ = self.myEyeMotion.fixationalEyemovementTrace(total_time)
+        if drift_only is True:
+            motion_yx = self.drift_trace(microsaccade_amplitude=0, total_time=total_time)
+            motion_x = motion_yx[1]
+            motion_y = motion_yx[0]
+        else: 
+            motion_x, motion_y, *_ = self.myEyeMotion.fixationalEyemovementTrace(total_time)
 
         # Split the full eye movement trace into each frame
         # Will need to drop some samples to make round frame
-        n_samples = time_samples.shape[0]
+        n_samples = motion_x.shape[0]
         n_frames = int(n_samples / self.myAOSLO.n_samples)
         n_samples_rounded = n_frames * self.myAOSLO.n_samples
 
@@ -419,7 +459,11 @@ class retina:
         
         return motions
     
-    def make_trial(self, condition=0, total_time=None, save:bool=True, flush:bool=False):
+    def make_trial(self, 
+                   condition=0, 
+                   total_time=None, 
+                   save:bool=True, 
+                   flush:bool=False):
 
         if total_time is None:
             total_time = self.cone_reflectance_parameters['duration_s']
@@ -461,7 +505,12 @@ class retina:
             np.save(os.path.join(data_dir, fnamef), np.asarray(images))
             # print(f'Save to file: {os.path.join(data_dir, fnamef)}')
     
-    def prepare_trial_params(self, condition=0, total_time=None, em_free=False, coherency=False):
+    def prepare_trial_params(self, 
+                             condition=0, 
+                             total_time=None, 
+                             em_free=False, 
+                             coherency=False,
+                             drift_only=None):
 
         if total_time is None:
             total_time = self.cone_reflectance_parameters['duration_s']
@@ -477,15 +526,24 @@ class retina:
         n_frames = int(total_time / frame_time)
 
         if em_free is False:
-            motions = self.em_trace_full(total_time)
-            if len(motions) != n_frames:
-                print(f'[Warning] mismatch frame count in motion calculation. Expect {n_frames}, Output {len(motions)}. Continue with {n_frames} in total') 
+            motions = self.em_trace_full(total_time, drift_only=drift_only)
         elif em_free is True:
             motions = [None for _ in range(n_frames)]
+            
+        if len(motions) != n_frames:
+            print(f'[Warning] mismatch frame count in motion calculation. Expect {n_frames}, Output {len(motions)}. Continue with {n_frames} in total') 
+       
 
-        from ORG.utils import static_osl, flicker_osl, interference, cone_specific_contrast, condition_contrast
+        from ORG.utils import static_osl, flicker_osl, dark_flash_opd, interference, cone_specific_contrast, condition_contrast
+
         if exp_type == 'static':
             osl_nm_t = static_osl(self.mosaic['osl_um'], n_frames, std=self.cone_reflectance_parameters['static_jitter_std'])
+
+            if coherency is False:
+                reflectance = interference(osl_nm_t, wavelength_nm=self.myAOSLO.parameters['wavelength_m']*1e9)
+            elif coherency is True:
+                reflectance = interference(osl_nm_t, wavelength_nm=self.myAOSLO.parameters['wavelength_m']*1e9, spectral_width_nm=self.myAOSLO.parameters['spectral_bandwidth_nm'], coherency=coherency)
+
         elif exp_type == 'flicker':
             LMS_contrast = condition_contrast(condition, self.cone_reflectance_parameters)
             contrast_map = cone_specific_contrast(self.mosaic['cone_types'], LMS_contrast)
@@ -502,11 +560,22 @@ class retina:
                                             n_frames = self.cone_reflectance_parameters['pre_stim_nframes'],
                                             std = self.cone_reflectance_parameters['static_jitter_std'])
                 osl_nm_t = np.concatenate( (pre_stim_osl_nm_t, osl_nm_t), axis=1)
+            if coherency is False:
+                reflectance = interference(osl_nm_t, wavelength_nm=self.myAOSLO.parameters['wavelength_m']*1e9)
+            elif coherency is True:
+                reflectance = interference(osl_nm_t, wavelength_nm=self.myAOSLO.parameters['wavelength_m']*1e9, spectral_width_nm=self.myAOSLO.parameters['spectral_bandwidth_nm'], coherency=coherency)
+
+        elif exp_type == 'd-flash':
+            # right now only 8% bleach achromatic is implemented
+            t_sequence = np.arange(n_frames) * frame_time - self.cone_reflectance_parameters['pre_stim_s']
+            opd_nm = dark_flash_opd(t=t_sequence, l0_nm=self.mosaic['osl_um'])
+
+            if coherency is False:
+                reflectance = interference(opd_nm, wavelength_nm=self.myAOSLO.parameters['wavelength_m']*1e9)
+            elif coherency is True:
+                reflectance = interference(opd_nm, wavelength_nm=self.myAOSLO.parameters['wavelength_m']*1e9, spectral_width_nm=self.myAOSLO.parameters['spectral_bandwidth_nm'], coherency=coherency)
             
-        if coherency is False:
-            reflectance = interference(osl_nm_t, wavelength_nm=self.myAOSLO.parameters['wavelength_m']*1e9)
-        elif coherency is True:
-            reflectance = interference(osl_nm_t, wavelength_nm=self.myAOSLO.parameters['wavelength_m']*1e9, spectral_width_nm=self.myAOSLO.parameters['spectral_bandwidth_nm'], coherency=coherency)
+        
 
         return motions, reflectance
     

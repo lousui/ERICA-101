@@ -462,7 +462,46 @@ def flicker_osl(start_osl_um, duration, n_frames, frequency, max_amp_nm, std, co
     osl_nm = osl_nm + max_amp_map * np.sin(omega*timepoints).reshape(1, n_frames)
     return osl_nm
 
-def interference(osl_nm_t, wavelength_nm, spectral_width_nm=None, coherency:bool=False):
+def dark_flash_opd(t, 
+                   A0 = -36.4, 
+                   A1 = 200.8, 
+                   tau_a = 9.5, 
+                   tau_b = 0.07, 
+                   l0_nm = 25*1e3, 
+                   n = 1.43,
+                   ):
+    ''' 
+    Dark adapted flash optical path length difference
+    Model from https://www.science.org/doi/full/10.1126/sciadv.adq7332
+
+    default values 8% cone bleach
+    A0 = -36.4 nm       -- fast constraction
+    A1 = 200.8 nm       -- swelling amplitude
+    tau_a = 9.5 s^-1    -- swelling rate parameter
+    tau_b = 0.07 s^-1   -- late contraction rate parameter
+
+    l0_nm = 25 um      -- starting outer segment length
+    n  = 1.43          -- outer segment refractive index
+    '''
+    if type(l0_nm) == float:
+        l0_nm = np.asarray([l0_nm])
+    elif type(l0_nm) == list:
+        l0_nm = np.asarray(l0_nm)
+
+    l0_nm = np.atleast_1d(l0_nm)
+
+    u = np.heaviside(t, 1)
+    delta_opd = u * (A0 + A1 * (-np.exp(-tau_a * t) + np.exp(-tau_b * t)))
+
+    opd_nm = 2 * n * l0_nm[:, None] + delta_opd[None, :]
+    return opd_nm
+
+def interference(
+        osl_nm_t=None, opd_nm=None,
+        wavelength_nm=830, 
+        spectral_width_nm=None, 
+        coherency=False,
+        ):
     '''
     Two beam interference of the given outer segment length traces. 
     
@@ -482,18 +521,24 @@ def interference(osl_nm_t, wavelength_nm, spectral_width_nm=None, coherency:bool
     - reflectance
         An array of [n_cones, n_frames] of cone reflectance.
     '''
-    NO = 1.430
-    opd_nm = 2 * NO * osl_nm_t
+
+    if opd_nm is None and osl_nm_t is not None:
+        NO = 1.430
+        opd_nm = 2 * NO * osl_nm_t
+
     d_phi = 2 * np.pi * opd_nm / wavelength_nm
+
     if coherency is False:
         reflectance = 0.5 * (1 + np.cos(d_phi)) 
     else:
         coherence_length_nm = 2 * np.log(2) * wavelength_nm**2 / (NO * np.pi * spectral_width_nm)
         deg_of_coherency = np.abs(np.exp(-(opd_nm/(coherence_length_nm*1e9))**2))
         reflectance = 0.5 * (1 + deg_of_coherency * np.cos(d_phi)) 
+
     return reflectance
 
 def cone_specific_contrast(cone_types, LMS_contrast):
+
     contrast_map = np.zeros(cone_types.shape)
 
     l_mask = cone_types == 1

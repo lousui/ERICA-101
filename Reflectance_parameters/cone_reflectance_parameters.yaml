@@ -6,7 +6,7 @@ osl_min_um: 15.0
 osl_max_um: 35.0
 coherency: False    # whether or not take degree of coherency into account when calculating reflectance
 
-exp_type: flicker  # flicker / static
+exp_type: flicker  # flicker / static / d-flash (dark-adapted flash)
 duration_s: 3.0
 frequency_Hz: 3.0
 static_jitter_std: 0.01
@@ -25,6 +25,11 @@ Achr_contrast: [0.82, 0.82, 0.82]
 
 static_trials: 1
 trials_per_condition: 5
+
 em_free: True
+drift_only: False
+
 noise_free: False
 pre_stim_nframes: 30
+
+pre_stim_s: 0.25
