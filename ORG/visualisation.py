@@ -1,7 +1,16 @@
+'''
+utils.py
+---------------
+Useful visualisation functions. 
+
+Sirui Liu, Mar 2026
+'''
+
 import matplotlib.pyplot as plt
 import numpy
 
 def plot_cone_spacing(mapped, microns_per_degree=297.0, fnum=1, n_neighbours=3):
+
     from ERICA import generate_retina
 
     # Detect the spacings between each cone and its nearest neighbours
@@ -48,9 +57,10 @@ def plot_cone_spacing(mapped, microns_per_degree=297.0, fnum=1, n_neighbours=3):
     ax1_1.set_ylabel('Cone spacing (microns)')
     plt.legend(loc='upper left', bbox_to_anchor=(1,1))
     plt.show()
-    
+    return
 
 def visualise_mosaic_grid(cone_positions_window, unit='deg', microns_per_degree=297.0):
+
     fig_1 = plt.figure(1, figsize=(10,10))
     ax1_1 = fig_1.add_subplot(111)
 
@@ -65,8 +75,14 @@ def visualise_mosaic_grid(cone_positions_window, unit='deg', microns_per_degree=
     ax1_1.set_ylabel(f'Vertical Postion ({unit})')
 
     plt.show()
+    return
 
 def visualise_cone_mosaic(cone_location_um, cone_types, unit='deg', microns_per_degree=297.0):
+
+    '''
+    Visualise cone mosaic with colour coded cone types.
+    '''
+
     colors = {1:'red', 2:'green', 3:'blue'}
     labels = {1:'L cone', 2:'M cone', 3:'S cone'}
 
@@ -107,8 +123,13 @@ def visualise_cone_mosaic(cone_location_um, cone_types, unit='deg', microns_per_
     ax.axis('equal')
 
     plt.show()
+    return
 
 def visualise_cone_type_and_osl(cone_location_um, cone_types, osl_cone_map, unit='deg'):
+
+    '''
+    Visualise cone mosaic and the outer segment heatmap.
+    '''
 
     colors = {1:'red', 2:'green', 3:'blue'}
     labels = {1:'L cone', 2:'M cone', 3:'S cone'}
@@ -158,51 +179,21 @@ def visualise_cone_type_and_osl(cone_location_um, cone_types, osl_cone_map, unit
 
     # plt.tight_layout()
     plt.show()
-
-def visualise_two_session_imaging(image_1_diffr, image_2_diffr, image_1_noise, image_2_noise, interval, noise_mode, osl_cone_map, osl_cone_map_new):
-    fig, axs = plt.subplots(3,3, figsize=(20,20))
-
-    axs[0,0].imshow(image_1_diffr, cmap='gray')
-    axs[0,0].set_title('Session 1\n(Diffraction limit)')
-
-    axs[0,1].imshow(image_2_diffr, cmap='gray')
-    axs[0,1].set_title(f'After {interval}h\n(Diffraction limit)')
-
-    diff1 = axs[0,2].imshow(image_2_diffr-image_1_diffr, cmap='bwr')
-    fig.colorbar(diff1, ax=axs[0,2])
-    axs[0,2].set_title(f'Difference')
-
-    axs[1,0].imshow(image_1_noise, cmap='gray')
-    axs[1,0].set_title(f'Session 1\n(Diffraction limit, {noise_mode} noise)')
-
-    axs[1,1].imshow(image_2_noise, cmap='gray')
-    axs[1,1].set_title(f'After {interval}h\n(Diffraction limit, {noise_mode} noise)')
-
-    diff2 = axs[1,2].imshow(image_2_noise-image_1_noise, cmap='bwr')
-    axs[1,2].set_title(f'Difference')
-    fig.colorbar(diff2, ax=axs[1,2])
-
-    axs[2,0].hist(osl_cone_map)
-    axs[2,0].set_title('Session 1')
-    axs[2,0].set_xlabel('OSL(um)')
-    axs[2,0].set_ylabel('# of Cones')
-
-    axs[2,1].hist(osl_cone_map_new)
-    axs[2,1].set_title(f'After {interval}h')
-    axs[2,1].set_xlabel('OSL(um)')
-    axs[2,1].set_ylabel('# of Cones')
-    plt.show()
-
+    return
 
 def eye_motion_1D(t, mx, my, ms_marker=[[numpy.nan, numpy.nan]], downsample_for_plotting=8000, cmap=plt.get_cmap('viridis')):
     """
     Plots the horizontal (x) and vertical (y) data as separate lines.
+    Adapted from original ERICA tutorial notebook.
 
     Parameters:
         t (ndarray): time samples.
         mx (ndarray): motion x
         my (ndarray): motion y
         ms_marker: microsaccade marker
+    
+    Returns:
+        figure: matplotlib figure handle
     """
     fig_1 = plt.figure(1, figsize=(12,4))
     fig_1.clf()
@@ -230,11 +221,16 @@ def eye_motion_1D(t, mx, my, ms_marker=[[numpy.nan, numpy.nan]], downsample_for_
 
 def eye_motion_2D(t, mx, my, downsample_for_plotting=8000, cmap=plt.get_cmap('viridis')):
     '''
-    Plots the motion trace in 2D space
+    Plots the motion trace in 2D space.
+    Adapted from original ERICA tutorial notebook.
+
     Parameters:
         t (ndarray): time samples.
         mx (ndarray): motion x
         my (ndarray): motion y
+    
+    Returns:
+        figure: matplotlib figure handle
     '''
     import matplotlib
     from ERICA import ERICA_toolkit
@@ -260,11 +256,8 @@ def eye_motion_2D(t, mx, my, downsample_for_plotting=8000, cmap=plt.get_cmap('vi
         
 def plot_gaussian(mu, sigma):
 
-    import matplotlib.pyplot as plt
-    import numpy as np
     import scipy.stats as stats
-    import math
 
-    x = np.linspace(mu - 4*sigma, mu + 4*sigma, 100)
+    x = numpy.linspace(mu - 4*sigma, mu + 4*sigma, 100)
     plt.plot(x, stats.norm.pdf(x, mu, sigma))
     plt.show()

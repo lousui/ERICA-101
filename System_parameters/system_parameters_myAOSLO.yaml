@@ -1,31 +1,34 @@
 bit_depth: 8
-frequency_fast_scanner_Hz: 14968.8
+frequency_fast_scanner_Hz: 13968.8
 microns_per_degree: 297.0
+
 noise_mode: gaussian
 noise_mean_normalised_graylevels: 0.2
 noise_stdev_normalised_graylevels: 0.15
 poisson_scale: 4
-mapping_low_high:
-- -0.05
-- 1.5
-number_pixels_per_line: 512 #358 # 
-number_scan_lines_excluding_flyback: 512 #456 #
-number_scan_lines_including_flyback: 520 #464 #
-pinhole_diameter_Airy_radii: 1.0 #2.0 #1.0 #0.5 #
-pixel_size_arcmin_y_x:
-# - 0.135
-# - 0.135
-- 0.1
-- 0.1
 proportion_saturated_pixels: 0.005
+
+number_pixels_per_line: 358 
+number_scan_lines_excluding_flyback: 456 
+number_scan_lines_including_flyback: 464 
+
 pupil_diameter_m: 0.008
+pinhole_diameter_Airy_radii: 1.0 
+
 wavelength_m: 8.3e-7
 spectral_bandwidth_nm: 0.5
+
+pixel_size_arcmin_y_x:
+- 0.135
+- 0.135
+
 eccentricity_y_x:  # in degree
 - 0.0
 - -1.5
+
 montage_field_of_view_y_x:  # in degree
 - 2
 - 2
+
 mosaic_number: 0
-mosaic_folder: /mnt/d/Sirui/project/AOSLO_ORG/Code/simulation/isetbio_retina/
+mosaic_folder: '/home/siruil/Code/ERICA/isetbio_retina' 

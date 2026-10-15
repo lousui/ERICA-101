@@ -1,0 +1,8 @@
+numpy
+scipy
+PyYAML
+numba
+Pillow
+scikit-image
+scikit-learn
+astropy
